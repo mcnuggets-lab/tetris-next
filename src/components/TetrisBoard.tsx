@@ -91,7 +91,8 @@ const TetrisBoard: React.FC = () => {
   const [currentPosition, setCurrentPosition] = useState<Position>({ x: 0, y: 0 });
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [score, setScore] = useState<number>(0);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(true);
+  const [gameStarted, setGameStarted] = useState<boolean>(false);
   
   // Memoize the grid to prevent unnecessary re-renders
   const memoizedGrid = useMemo(() => grid, [grid]);
@@ -105,6 +106,7 @@ const TetrisBoard: React.FC = () => {
 
   // Initialize the game
   const startGame = useCallback((): void => {
+    setIsPaused(false); // Ensure game is not paused when starting
     setGameOver(false);
     setScore(0);
     setGrid(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill('empty')));
@@ -117,7 +119,7 @@ const TetrisBoard: React.FC = () => {
 
   // Lock the current tetromino in place
   const lockTetromino = useCallback((): void => {
-    if (!currentTetromino || gameOver || isPaused) return;
+    if (!currentTetromino || gameOver || isPaused || !gameStarted) return;
 
     // Create a new grid with the current piece locked in place
     const newGrid = grid.map(row => [...row]);
@@ -201,7 +203,7 @@ const TetrisBoard: React.FC = () => {
 
   // Move tetromino function
   const moveTetromino = useCallback((dx: number, dy: number, isHardDrop: boolean = false): boolean => {
-    if (!currentTetromino || gameOver || isPaused) return false;
+    if (!currentTetromino || gameOver || isPaused || !gameStarted) return false;
 
     const newX = currentPosition.x + dx;
     const newY = currentPosition.y + dy;
@@ -229,7 +231,7 @@ const TetrisBoard: React.FC = () => {
 
   // Rotate tetromino function
   const rotateTetromino = useCallback((): void => {
-    if (!currentTetromino || gameOver || isPaused) return;
+    if (!currentTetromino || gameOver || isPaused || !gameStarted) return;
 
     const { shape } = currentTetromino;
     const newShape = shape[0].map((_, colIndex) =>
@@ -277,7 +279,7 @@ const TetrisBoard: React.FC = () => {
 
   // Game loop
   useEffect(() => {
-    if (gameOver || isPaused) return;
+    if (gameOver || isPaused || !gameStarted) return;
 
     const moveDown = () => {
       if (!currentTetromino) return;
@@ -290,7 +292,16 @@ const TetrisBoard: React.FC = () => {
 
   // Handle keyboard input
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (gameOver || isPaused) return;
+    // Allow pausing/resuming even when game is over
+    if (e.key.toLowerCase() === 'p') {
+      if (gameStarted) {
+        setIsPaused(prev => !prev);
+      }
+      return;
+    }
+
+    // Block other inputs if game is not active
+    if (gameOver || isPaused || !gameStarted) return;
 
     switch (e.key) {
       case 'ArrowLeft':
@@ -305,14 +316,7 @@ const TetrisBoard: React.FC = () => {
       case 'ArrowUp':
         rotateTetromino();
         break;
-      case ' ':
-        // Hard drop
-        while (moveTetromino(0, 1, true)) {}
-        break;
-      case 'p':
-      case 'P':
-        setIsPaused(prev => !prev);
-        break;
+      // Removed hard drop functionality
       default:
         break;
     }
@@ -324,10 +328,12 @@ const TetrisBoard: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Start game on mount
+  // Start game when gameStarted changes to true
   useEffect(() => {
-    startGame();
-  }, []);
+    if (gameStarted) {
+      startGame();
+    }
+  }, [gameStarted, startGame]); // Added startGame to dependency array
 
   return (
     <div className="flex flex-col items-center gap-6 p-6">
@@ -339,6 +345,8 @@ const TetrisBoard: React.FC = () => {
         style={{
           width: `${BOARD_WIDTH * 30}px`,
           height: `${BOARD_HEIGHT * 30}px`,
+          opacity: gameStarted ? 1 : 0.5,
+          transition: 'opacity 0.3s',
         }}
       >
         {/* Render grid cells */}
@@ -384,57 +392,40 @@ const TetrisBoard: React.FC = () => {
           )}
       </div>
       
-      {/* Game controls */}
-      <div className="flex gap-4">
-        <button
-          onClick={() => moveTetromino(-1, 0)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Left
-        </button>
-        <button
-          onClick={() => moveTetromino(1, 0)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Right
-        </button>
-        <button
-          onClick={() => moveTetromino(0, 1)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Down
-        </button>
-        <button
-          onClick={rotateTetromino}
-          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-        >
-          Rotate
-        </button>
-        <button
-          onClick={() => {
-            while (moveTetromino(0, 1, true)) {}
-          }}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Drop
-        </button>
-      </div>
+
       
       {/* Game status */}
-      {gameOver && (
-        <div className="text-2xl font-bold text-red-500">Game Over!</div>
+      {!gameStarted ? (
+        <button
+          onClick={() => setGameStarted(true)}
+          className="px-6 py-3 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
+        >
+          Start Game
+        </button>
+      ) : (
+        <>
+          {gameOver && (
+            <div className="text-2xl font-bold text-red-500">Game Over!</div>
+          )}
+          {isPaused && !gameOver && (
+            <div className="text-2xl font-bold text-yellow-500">Paused</div>
+          )}
+          <button
+            onClick={() => {
+              if (gameOver) {
+                setGameStarted(false);
+                setTimeout(() => setGameStarted(true), 100);
+              } else {
+                // Toggle pause/play
+                setIsPaused(prev => !prev);
+              }
+            }}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            {gameOver ? 'Play Again' : (isPaused ? 'Resume' : 'Pause')}
+          </button>
+        </>
       )}
-      {isPaused && (
-        <div className="text-2xl font-bold text-yellow-500">Paused</div>
-      )}
-      
-      {/* Restart button */}
-      <button
-        onClick={startGame}
-        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-      >
-        {gameOver ? 'Play Again' : 'Restart'}
-      </button>
     </div>
   );
 };
