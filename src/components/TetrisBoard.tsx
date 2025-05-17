@@ -170,9 +170,26 @@ const TetrisBoard: React.FC = () => {
         }
       }
       
-      // Update score based on number of completed lines
+      // Update score based on number of completed lines (Tetris scoring system)
       if (completedLines.length > 0) {
-        setScore(prev => prev + completedLines.length * 100);
+        let points = 0;
+        switch (completedLines.length) {
+          case 1:
+            points = 100;  // 1 line = 100 points
+            break;
+          case 2:
+            points = 300;  // 2 lines = 300 points (150 per line)
+            break;
+          case 3:
+            points = 500;  // 3 lines = 500 points (~166 per line)
+            break;
+          case 4:
+            points = 800;  // 4 lines = 800 points (200 per line - Tetris!)
+            break;
+          default:
+            points = completedLines.length * 100;  // Fallback for any unexpected cases
+        }
+        setScore(prev => prev + points);
         
         // Remove completed lines and add new empty ones at the top
         const newGridWithoutLines = updatedGrid.filter((_, index) => !completedLines.includes(index));
@@ -435,6 +452,16 @@ const TetrisBoard: React.FC = () => {
           
           {/* Game Controls */}
           <div className="flex flex-col items-center gap-4 w-full">
+            <div className="text-center w-full bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-lg font-bold mb-2 text-white">How to Play</h3>
+              <div className="text-base space-y-1 text-gray-200">
+                <p>← → : Move Left/Right</p>
+                <p>↑ : Rotate</p>
+                <p>↓ : Soft Drop</p>
+                <p>Space : Hard Drop</p>
+                <p>P : Pause</p>
+              </div>
+            </div>
             {!gameStarted ? (
               <button
                 onClick={() => setGameStarted(true)}
