@@ -133,6 +133,50 @@ const TetrisBoard: React.FC = () => {
     setCurrentPosition({ x: startX, y: 0 });
   }, [getRandomTetromino, setIsPaused, setGameOver, setScore]);
 
+  // Check and clear completed lines
+  const clearCompletedLines = useCallback((gridToCheck: Grid): { newGrid: Grid, linesCleared: number } => {
+    const completedLines: number[] = [];
+    const updatedGrid = [...gridToCheck];
+    
+    for (let y = 0; y < updatedGrid.length; y++) {
+      if (updatedGrid[y] && updatedGrid[y].every(cell => cell.type === 'filled')) {
+        completedLines.push(y);
+      }
+    }
+    
+    // Update score based on number of completed lines (Tetris scoring system)
+    if (completedLines.length > 0) {
+      let points = 0;
+      switch (completedLines.length) {
+        case 1:
+          points = 100;  // 1 line = 100 points
+          break;
+        case 2:
+          points = 300;  // 2 lines = 300 points (150 per line)
+          break;
+        case 3:
+          points = 500;  // 3 lines = 500 points (~166 per line)
+          break;
+        case 4:
+          points = 800;  // 4 lines = 800 points (200 per line - Tetris!)
+          break;
+        default:
+          points = completedLines.length * 100;  // Fallback for any unexpected cases
+      }
+      
+      if (setScore && typeof score === 'number') {
+        setScore(score + points);
+      }
+      
+      // Remove completed lines and add new empty ones at the top
+      const newGridWithoutLines = updatedGrid.filter((_, index) => !completedLines.includes(index));
+      const newLines = Array(completedLines.length).fill(null).map(() => Array(BOARD_WIDTH).fill({ type: 'empty' } as const));
+      return { newGrid: [...newLines, ...newGridWithoutLines], linesCleared: completedLines.length };
+    }
+    
+    return { newGrid: updatedGrid, linesCleared: 0 };
+  }, [score, setScore]);
+
   // Lock the current tetromino in place
   const lockTetromino = useCallback((): void => {
     if (!currentTetromino || gameOver || isPaused || !gameStarted) return;
@@ -171,46 +215,9 @@ const TetrisBoard: React.FC = () => {
     }
 
     if (pieceLocked) {
-      // Check for complete lines
-      const completedLines: number[] = [];
-      const updatedGrid = [...newGrid];
-      
-      for (let y = 0; y < updatedGrid.length; y++) {
-        if (updatedGrid[y] && updatedGrid[y].every(cell => cell.type === 'filled')) {
-          completedLines.push(y);
-        }
-      }
-      
-      // Update score based on number of completed lines (Tetris scoring system)
-      if (completedLines.length > 0) {
-        let points = 0;
-        switch (completedLines.length) {
-          case 1:
-            points = 100;  // 1 line = 100 points
-            break;
-          case 2:
-            points = 300;  // 2 lines = 300 points (150 per line)
-            break;
-          case 3:
-            points = 500;  // 3 lines = 500 points (~166 per line)
-            break;
-          case 4:
-            points = 800;  // 4 lines = 800 points (200 per line - Tetris!)
-            break;
-          default:
-            points = completedLines.length * 100;  // Fallback for any unexpected cases
-        }
-        if (setScore && typeof score === 'number') {
-          setScore(score + points);
-        }
-        
-        // Remove completed lines and add new empty ones at the top
-        const newGridWithoutLines = updatedGrid.filter((_, index) => !completedLines.includes(index));
-        const newLines = Array(completedLines.length).fill(null).map(() => Array(BOARD_WIDTH).fill({ type: 'empty' } as const));
-        setGrid([...newLines, ...newGridWithoutLines]);
-      } else {
-        setGrid(updatedGrid);
-      }
+      // Check and clear completed lines
+      const { newGrid: updatedGrid } = clearCompletedLines(newGrid);
+      setGrid(updatedGrid);
       
       // Spawn new tetromino
       const newTetromino = nextTetromino || getRandomTetromino();
@@ -223,7 +230,7 @@ const TetrisBoard: React.FC = () => {
           if (cell === 0) return false;
           const x = startX + j;
           const y = i; // Start at y=0 for collision check
-          return y >= 0 && updatedGrid[y] && updatedGrid[y][x].type === 'filled';
+          return y >= 0 && updatedGrid[y] && updatedGrid[y][x]?.type === 'filled';
         })
       );
       
@@ -313,8 +320,11 @@ const TetrisBoard: React.FC = () => {
       });
     });
     
+    // Check and clear completed lines
+    const { newGrid: updatedGrid } = clearCompletedLines(newGrid);
+    
     // Update the grid and spawn a new piece
-    setGrid(newGrid);
+    setGrid(updatedGrid);
     
     // Spawn new tetromino
     const newTetromino = nextTetromino || getRandomTetromino();
@@ -327,7 +337,7 @@ const TetrisBoard: React.FC = () => {
         if (cell === 0) return false;
         const x = startX + j;
         const y = i; // Start at y=0 for collision check
-        return y >= 0 && newGrid[y] && newGrid[y][x]?.type === 'filled';
+        return y >= 0 && updatedGrid[y] && updatedGrid[y][x]?.type === 'filled';
       })
     );
     
@@ -339,7 +349,7 @@ const TetrisBoard: React.FC = () => {
     setCurrentTetromino(newTetromino);
     setNextTetromino(newNextTetromino);
     setCurrentPosition({ x: startX, y: 0 });
-  }, [currentTetromino, currentPosition, gameOver, gameStarted, getRandomTetromino, grid, isPaused, nextTetromino, setGameOver]);
+  }, [currentTetromino, currentPosition, gameOver, gameStarted, getRandomTetromino, grid, isPaused, nextTetromino, setGameOver, clearCompletedLines]);
 
   // Rotate the current tetromino
   const rotateTetromino = useCallback((): void => {
