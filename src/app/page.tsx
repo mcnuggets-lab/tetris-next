@@ -7,36 +7,48 @@ import { TetrisProvider, TetrisContext } from '../components/TetrisContext';
 function GameStatus() {
   const context = useContext(TetrisContext);
   
-  if (!context) return null;
+  const getStatusContent = () => {
+    if (!context) return null;
+    const { gameOver, isPaused } = context;
+    
+    if (gameOver) {
+      return (
+        <div className="text-2xl font-bold text-red-500 animate-pulse">
+          Game Over!
+        </div>
+      );
+    }
+    
+    if (isPaused) {
+      return (
+        <div className="text-2xl font-bold text-yellow-500">
+          Paused
+        </div>
+      );
+    }
+    
+    return null;
+  };
   
-  const { gameOver, isPaused } = context;
-  
-  if (gameOver) {
-    return (
-      <div className="text-2xl font-bold text-red-500 mb-4 animate-pulse">
-        Game Over!
-      </div>
-    );
-  }
-  
-  if (isPaused) {
-    return (
-      <div className="text-2xl font-bold text-yellow-500 mb-4">
-        Paused
-      </div>
-    );
-  }
-  
-  return <div className="h-8"></div>;
+  return (
+    <div className="w-full min-h-[2rem] flex items-center justify-center">
+      {getStatusContent()}
+    </div>
+  );
+
 }
 
 export default function Home() {
   return (
     <TetrisProvider>
-      <main className="flex min-h-screen flex-col items-center p-8">
-        <h1 className="text-4xl font-bold mb-2">Tetris</h1>
-        <GameStatus />
-        <TetrisBoard />
+      <main className="min-h-screen p-8">
+        <div className="flex flex-col items-center">
+          <h1 className="text-4xl font-bold mb-2 text-center">Tetris</h1>
+          <div className="w-full max-w-[600px] text-center min-h-[2rem] mb-4">
+            <GameStatus />
+          </div>
+          <TetrisBoard />
+        </div>
       </main>
     </TetrisProvider>
   );
