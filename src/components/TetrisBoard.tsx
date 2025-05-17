@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState, useMemo, useContext } from "react";
 import { useTetris } from "./TetrisContext";
+import { ScoreDisplay } from "./ScoreDisplay";
 
 // Types
 type Cell = { type: 'empty' } | { type: 'filled'; color: string };
@@ -210,6 +211,13 @@ const TetrisBoard: React.FC = () => {
     });
 
     if (gameShouldEnd) {
+      // Update high score before setting game over
+      if (score > 0) {
+        const currentHighScore = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
+        if (score > currentHighScore) {
+          localStorage.setItem('tetrisHighScore', score.toString());
+        }
+      }
       setGameOver(true);
       return;
     }
@@ -471,8 +479,8 @@ const TetrisBoard: React.FC = () => {
               backgroundSize: '30px 30px',
               width: `${BOARD_WIDTH * 30}px`,
               height: `${BOARD_HEIGHT * 30}px`,
-              opacity: gameStarted ? 1 : 0.5,
-              transition: 'opacity 0.3s',
+              opacity: (!gameStarted || gameOver) ? 0.5 : (isPaused ? 0.7 : 1),
+              transition: 'opacity 0.3s ease-in-out',
               border: '2px solid #6B7280',
               boxSizing: 'border-box',
               position: 'relative',
@@ -537,7 +545,7 @@ const TetrisBoard: React.FC = () => {
         {/* Side Panel */}
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col gap-8 items-center">
-            <div className="text-2xl font-bold">Score: {score}</div>
+            <ScoreDisplay />
             <div className="flex flex-col items-center">
               <div className="text-xl font-semibold mb-2">Next Piece</div>
               <div className="border-4 border-gray-600 bg-gray-800 rounded-lg p-4 w-32 h-32 flex items-center justify-center">
@@ -588,11 +596,19 @@ const TetrisBoard: React.FC = () => {
               <button
                 onClick={() => {
                   if (gameOver) {
+                    // Reset game state
                     setGameOver(false);
                     setScore(0);
                     setGrid(createEmptyGrid());
-                    setGameStarted(false);
                     setIsPaused(false);
+                    
+                    // Start a new game immediately
+                    const firstTetromino = getRandomTetromino();
+                    const nextTetromino = getRandomTetromino();
+                    const startX = Math.floor((BOARD_WIDTH - firstTetromino.shape[0].length) / 2);
+                    setCurrentTetromino(firstTetromino);
+                    setNextTetromino(nextTetromino);
+                    setCurrentPosition({ x: startX, y: 0 });
                   } else {
                     handlePause();
                   }
