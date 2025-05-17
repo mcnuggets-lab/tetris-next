@@ -375,19 +375,18 @@ const TetrisBoard: React.FC = () => {
             className="relative bg-gray-900"
             style={{
               backgroundImage: `
-                linear-gradient(to right, rgba(75, 85, 99, 0.5) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(75, 85, 99, 0.5) 1px, transparent 1px)
+                linear-gradient(to right, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(200, 200, 200, 0.3) 1px, transparent 1px)
               `,
               backgroundSize: '30px 30px',
               width: `${BOARD_WIDTH * 30}px`,
               height: `${BOARD_HEIGHT * 30}px`,
               opacity: gameStarted ? 1 : 0.5,
               transition: 'opacity 0.3s',
-              border: '2px solid #4B5563',
+              border: '2px solid #6B7280',
               boxSizing: 'border-box',
               position: 'relative',
-              overflow: 'hidden',
-              backgroundPosition: '-0.5px -0.5px'  // Adjust grid alignment
+              overflow: 'hidden'
             }}
           >
             {/* Render placed pieces */}
@@ -483,7 +482,7 @@ const TetrisBoard: React.FC = () => {
                 <p>← → : Move Left/Right</p>
                 <p>↑ : Rotate</p>
                 <p>↓ : Soft Drop</p>
-                <p>Space : Hard Drop</p>
+                <p>Space : Rotate</p>
                 <p>P : Pause</p>
               </div>
             </div>
