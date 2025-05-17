@@ -241,7 +241,8 @@ const TetrisBoard: React.FC = () => {
   // Move the current tetromino
   const moveTetromino = useCallback((dx: number, dy: number): boolean => {
     if (!currentTetromino || gameOver || isPaused || !gameStarted) return false;
-
+    
+    // Normal movement logic for non-hard-drop
     const newX = currentPosition.x + dx;
     const newY = currentPosition.y + dy;
 
@@ -255,7 +256,7 @@ const TetrisBoard: React.FC = () => {
           x < 0 ||
           x >= BOARD_WIDTH ||
           y >= BOARD_HEIGHT ||
-          (y >= 0 && grid[y] && grid[y][x].type === 'filled')
+          (y >= 0 && grid[y] && grid[y][x]?.type === 'filled')
         );
       })
     );
@@ -269,6 +270,76 @@ const TetrisBoard: React.FC = () => {
     }
     return false;
   }, [currentPosition, currentTetromino, gameOver, gameStarted, grid, isPaused, lockTetromino]);
+
+  // Hard drop the current tetromino
+  const hardDrop = useCallback((): void => {
+    if (!currentTetromino || gameOver || isPaused || !gameStarted) return;
+    
+    // Create a deep copy of the current grid
+    const newGrid = JSON.parse(JSON.stringify(grid));
+    let dropY = currentPosition.y;
+    
+    // Find the lowest possible Y position
+    findLowestPosition: for (let yTest = currentPosition.y; yTest <= BOARD_HEIGHT; yTest++) {
+      // Check if we can move down to yTest
+      for (let i = 0; i < currentTetromino.shape.length; i++) {
+        for (let j = 0; j < currentTetromino.shape[i].length; j++) {
+          if (currentTetromino.shape[i][j] === 0) continue;
+          
+          const x = currentPosition.x + j;
+          const y = yTest + i;
+          
+          // If we hit the bottom or a filled cell, use the previous valid position
+          if (y >= BOARD_HEIGHT || (y >= 0 && y < BOARD_HEIGHT && newGrid[y] && newGrid[y][x]?.type === 'filled')) {
+            break findLowestPosition;
+          }
+        }
+      }
+      dropY = yTest;
+    }
+    
+    // Lock the piece at the final position
+    currentTetromino.shape.forEach((row, i) => {
+      row.forEach((cell, j) => {
+        if (cell === 0) return;
+        
+        const x = currentPosition.x + j;
+        const y = dropY + i;
+        
+        if (y >= 0 && y < BOARD_HEIGHT && x >= 0 && x < BOARD_WIDTH) {
+          if (!newGrid[y]) newGrid[y] = [];
+          newGrid[y][x] = { type: 'filled', color: currentTetromino.color };
+        }
+      });
+    });
+    
+    // Update the grid and spawn a new piece
+    setGrid(newGrid);
+    
+    // Spawn new tetromino
+    const newTetromino = nextTetromino || getRandomTetromino();
+    const newNextTetromino = getRandomTetromino();
+    const startX = Math.floor((BOARD_WIDTH - newTetromino.shape[0].length) / 2);
+    
+    // Check if game over (new piece would collide immediately)
+    const wouldCollide = newTetromino.shape.some((row, i) =>
+      row.some((cell, j) => {
+        if (cell === 0) return false;
+        const x = startX + j;
+        const y = i; // Start at y=0 for collision check
+        return y >= 0 && newGrid[y] && newGrid[y][x]?.type === 'filled';
+      })
+    );
+    
+    if (wouldCollide) {
+      setGameOver(true);
+      return;
+    }
+    
+    setCurrentTetromino(newTetromino);
+    setNextTetromino(newNextTetromino);
+    setCurrentPosition({ x: startX, y: 0 });
+  }, [currentTetromino, currentPosition, gameOver, gameStarted, getRandomTetromino, grid, isPaused, nextTetromino, setGameOver]);
 
   // Rotate the current tetromino
   const rotateTetromino = useCallback((): void => {
@@ -309,19 +380,28 @@ const TetrisBoard: React.FC = () => {
 
       switch (e.key) {
         case 'ArrowLeft':
+          e.preventDefault();
           moveTetromino(-1, 0);
           break;
         case 'ArrowRight':
+          e.preventDefault();
           moveTetromino(1, 0);
           break;
         case 'ArrowDown':
+          e.preventDefault();
           moveTetromino(0, 1);
           break;
+        case 'ArrowUp':
+          e.preventDefault();
+          hardDrop();
+          break;
         case ' ':
+          e.preventDefault();
           rotateTetromino();
           break;
         case 'p':
         case 'P':
+          e.preventDefault();
           if (setIsPaused) {
             setIsPaused(!isPaused);
           }
@@ -480,8 +560,8 @@ const TetrisBoard: React.FC = () => {
               <h3 className="text-lg font-bold mb-2 text-white">How to Play</h3>
               <div className="text-base space-y-1 text-gray-200">
                 <p>← → : Move Left/Right</p>
+                <p>↑ : Hard Drop</p>
                 <p>↓ : Soft Drop</p>
-                <p>↑ : Rotate</p>
                 <p>Space : Rotate</p>
                 <p>P : Pause</p>
               </div>
