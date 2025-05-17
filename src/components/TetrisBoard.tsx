@@ -88,6 +88,7 @@ const TetrisBoard: React.FC = () => {
     Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill('empty'))
   );
   const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null);
+  const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null);
   const [currentPosition, setCurrentPosition] = useState<Position>({ x: 0, y: 0 });
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [score, setScore] = useState<number>(0);
@@ -106,13 +107,15 @@ const TetrisBoard: React.FC = () => {
 
   // Initialize the game
   const startGame = useCallback((): void => {
-    setIsPaused(false); // Ensure game is not paused when starting
+    setIsPaused(false);
     setGameOver(false);
     setScore(0);
     setGrid(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill('empty')));
-    const newTetromino = getRandomTetromino();
-    const startX = Math.floor((BOARD_WIDTH - newTetromino.shape[0].length) / 2);
-    setCurrentTetromino(newTetromino);
+    const firstTetromino = getRandomTetromino();
+    const nextTetromino = getRandomTetromino();
+    const startX = Math.floor((BOARD_WIDTH - firstTetromino.shape[0].length) / 2);
+    setCurrentTetromino(firstTetromino);
+    setNextTetromino(nextTetromino);
     setCurrentPosition({ x: startX, y: -2 });
     setIsPaused(false);
   }, [getRandomTetromino]);
@@ -178,7 +181,8 @@ const TetrisBoard: React.FC = () => {
       }
       
       // Spawn new tetromino
-      const newTetromino = getRandomTetromino();
+      const newTetromino = nextTetromino || getRandomTetromino();
+      const newNextTetromino = getRandomTetromino();
       const startX = Math.floor((BOARD_WIDTH - newTetromino.shape[0].length) / 2);
       
       // Check if game over (new piece would collide immediately)
@@ -197,235 +201,250 @@ const TetrisBoard: React.FC = () => {
       }
       
       setCurrentTetromino(newTetromino);
+      setNextTetromino(newNextTetromino);
       setCurrentPosition({ x: startX, y: -2 });
     }
-  }, [currentTetromino, currentPosition, grid, getRandomTetromino, gameOver, isPaused]);
+  }, [currentTetromino, currentPosition, gameOver, gameStarted, getRandomTetromino, grid, isPaused, nextTetromino]);
 
-  // Move tetromino function
-  const moveTetromino = useCallback((dx: number, dy: number, isHardDrop: boolean = false): boolean => {
+  // Move the current tetromino
+  const moveTetromino = useCallback((dx: number, dy: number): boolean => {
     if (!currentTetromino || gameOver || isPaused || !gameStarted) return false;
 
     const newX = currentPosition.x + dx;
     const newY = currentPosition.y + dy;
 
-    // Check if new position is valid
-    const isValid = currentTetromino.shape.every((row: number[], i: number) =>
-      row.every((cell: number, j: number) => {
-        if (cell === 0) return true;
+    // Check for collisions
+    const collides = currentTetromino.shape.some((row: number[], i: number) =>
+      row.some((cell: number, j: number) => {
+        if (cell === 0) return false;
         const x = newX + j;
         const y = newY + i;
-        return y < BOARD_HEIGHT && x >= 0 && x < BOARD_WIDTH && (y < 0 || !grid[y] || grid[y][x] === 'empty');
+        return (
+          x < 0 ||
+          x >= BOARD_WIDTH ||
+          y >= BOARD_HEIGHT ||
+          (y >= 0 && grid[y] && grid[y][x] === 'filled')
+        );
       })
     );
 
-    if (isValid) {
+    if (!collides) {
       setCurrentPosition({ x: newX, y: newY });
       return true;
     } else if (dy > 0) {
       // If we can't move down, lock the piece
       lockTetromino();
-      return false;
     }
     return false;
-  }, [currentTetromino, currentPosition, grid, gameOver, isPaused, lockTetromino]);
+  }, [currentPosition, currentTetromino, gameOver, gameStarted, grid, isPaused, lockTetromino]);
 
-  // Rotate tetromino function
+  // Rotate the current tetromino
   const rotateTetromino = useCallback((): void => {
     if (!currentTetromino || gameOver || isPaused || !gameStarted) return;
 
-    const { shape } = currentTetromino;
-    const newShape = shape[0].map((_, colIndex) =>
-      shape.map(row => row[colIndex]).reverse()
+    // Create a new rotated shape
+    const rotatedShape = currentTetromino.shape[0].map((_, i) =>
+      currentTetromino.shape.map(row => row[i]).reverse()
     );
 
     // Check if rotation is valid
-    const isValid = newShape.every((row: number[], i: number) =>
-      row.every((cell: number, j: number) => {
-        if (cell === 0) return true;
+    const canRotate = !rotatedShape.some((row: number[], i: number) =>
+      row.some((cell: number, j: number) => {
+        if (cell === 0) return false;
         const x = currentPosition.x + j;
         const y = currentPosition.y + i;
-        // Allow pieces to rotate above the grid
-        return y < BOARD_HEIGHT && 
-               x >= 0 && 
-               x < BOARD_WIDTH && 
-               (y < 0 || !grid[y] || grid[y][x] === 'empty');
+        return (
+          x < 0 ||
+          x >= BOARD_WIDTH ||
+          y >= BOARD_HEIGHT ||
+          (y >= 0 && grid[y] && grid[y][x] === 'filled')
+        );
       })
     );
 
-    if (isValid) {
-      // Adjust position if needed after rotation
-      const shapeWidth = newShape[0].length;
-      
-      // Ensure piece stays within bounds
-      let newX = currentPosition.x;
-      let newY = currentPosition.y;
-      
-      // Adjust X position if piece would go out of bounds
-      if (newX + shapeWidth > BOARD_WIDTH) {
-        newX = BOARD_WIDTH - shapeWidth;
-      } else if (newX < 0) {
-        newX = 0;
-      }
-      
-      // Adjust Y position if piece would go out of bounds
-      if (newY < -2) {
-        newY = -2;
-      }
-      
-      setCurrentPosition({ x: newX, y: newY });
-      setCurrentTetromino({ ...currentTetromino, shape: newShape });
+    if (canRotate) {
+      setCurrentTetromino({
+        ...currentTetromino,
+        shape: rotatedShape
+      });
     }
-  }, [currentTetromino, currentPosition, grid, gameOver, isPaused]);
+  }, [currentPosition, currentTetromino, gameOver, gameStarted, grid, isPaused]);
+
+  // Handle keyboard input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (gameOver || !gameStarted) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          moveTetromino(-1, 0);
+          break;
+        case 'ArrowRight':
+          moveTetromino(1, 0);
+          break;
+        case 'ArrowDown':
+          moveTetromino(0, 1);
+          break;
+        case ' ':
+          rotateTetromino();
+          break;
+        case 'p':
+        case 'P':
+          setIsPaused(prev => !prev);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameOver, gameStarted, moveTetromino, rotateTetromino]);
 
   // Game loop
   useEffect(() => {
     if (gameOver || isPaused || !gameStarted) return;
 
-    const moveDown = () => {
-      if (!currentTetromino) return;
-      moveTetromino(0, 1);
+    const moveDown = (): void => {
+      if (!moveTetromino(0, 1)) {
+        lockTetromino();
+      }
     };
 
     const interval = setInterval(moveDown, 500);
     return () => clearInterval(interval);
-  }, [currentTetromino, gameOver, isPaused, moveTetromino]);
+  }, [currentTetromino, gameOver, isPaused, moveTetromino, lockTetromino, gameStarted]);
 
-  // Handle keyboard input
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Allow pausing/resuming even when game is over
-    if (e.key.toLowerCase() === 'p') {
-      if (gameStarted) {
-        setIsPaused(prev => !prev);
-      }
-      return;
-    }
-
-    // Block other inputs if game is not active
-    if (gameOver || isPaused || !gameStarted) return;
-
-    switch (e.key) {
-      case 'ArrowLeft':
-        moveTetromino(-1, 0);
-        break;
-      case 'ArrowRight':
-        moveTetromino(1, 0);
-        break;
-      case 'ArrowDown':
-        moveTetromino(0, 1);
-        break;
-      case 'ArrowUp':
-        rotateTetromino();
-        break;
-      // Removed hard drop functionality
-      default:
-        break;
-    }
-  }, [gameOver, isPaused, moveTetromino, rotateTetromino]);
-
-  // Set up keyboard event listeners
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
-  // Start game when gameStarted changes to true
+  // Start the game when gameStarted changes to true
   useEffect(() => {
     if (gameStarted) {
       startGame();
     }
-  }, [gameStarted, startGame]); // Added startGame to dependency array
+  }, [gameStarted, startGame]);
 
   return (
-    <div className="flex flex-col items-center gap-6 p-6">
-      <h1 className="text-3xl font-bold">Tetris</h1>
-      <div className="text-xl">Score: {score}</div>
-      
-      <div 
-        className="border-4 border-gray-700 bg-gray-900 relative"
-        style={{
-          width: `${BOARD_WIDTH * 30}px`,
-          height: `${BOARD_HEIGHT * 30}px`,
-          opacity: gameStarted ? 1 : 0.5,
-          transition: 'opacity 0.3s',
-        }}
-      >
-        {/* Render grid cells */}
-        {memoizedGrid.map((row, y) =>
-          row.map((cell, x) => (
-            <div
-              key={`${y}-${x}`}
-              className={`absolute w-[30px] h-[30px] border border-gray-800 ${
-                cell === 'filled' ? 'bg-gray-600' : 'bg-gray-800'
-              }`}
-              style={{
-                left: `${x * 30}px`,
-                top: `${y * 30}px`,
-              }}
-            />
-          ))
-        )}
-
-        {/* Render current tetromino */}
-        {currentTetromino &&
-          currentTetromino.shape.map((row, i) =>
-            row.map((cell, j) => {
-              if (cell === 0) return null;
-              const x = currentPosition.x + j;
-              const y = currentPosition.y + i;
-              
-              // Don't render if outside the visible grid
-              if (y < 0 || y >= BOARD_HEIGHT || x < 0 || x >= BOARD_WIDTH) {
-                return null;
-              }
-              
-              return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="flex items-start gap-8 h-[600px]">
+        {/* Game Board */}
+        <div>
+          <div 
+            className="border-4 border-gray-700 bg-gray-900 relative"
+            style={{
+              width: `${BOARD_WIDTH * 30}px`,
+              height: `${BOARD_HEIGHT * 30}px`,
+              opacity: gameStarted ? 1 : 0.5,
+              transition: 'opacity 0.3s',
+            }}
+          >
+            {/* Render grid cells */}
+            {memoizedGrid.map((row, y) =>
+              row.map((cell, x) => (
                 <div
-                  key={`tetromino-${i}-${j}`}
-                  className={`absolute w-[30px] h-[30px] border border-gray-800 ${currentTetromino.color}`}
+                  key={`${y}-${x}`}
+                  className={`absolute w-[30px] h-[30px] border border-gray-800 ${
+                    cell === 'filled' ? 'bg-gray-600' : 'bg-gray-800'
+                  }`}
                   style={{
                     left: `${x * 30}px`,
                     top: `${y * 30}px`,
                   }}
                 />
-              );
-            })
-          )}
-      </div>
-      
+              ))
+            )}
 
-      
-      {/* Game status */}
-      {!gameStarted ? (
-        <button
-          onClick={() => setGameStarted(true)}
-          className="px-6 py-3 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Start Game
-        </button>
-      ) : (
-        <>
-          {gameOver && (
-            <div className="text-2xl font-bold text-red-500">Game Over!</div>
-          )}
-          {isPaused && !gameOver && (
-            <div className="text-2xl font-bold text-yellow-500">Paused</div>
-          )}
-          <button
-            onClick={() => {
-              if (gameOver) {
-                setGameStarted(false);
-                setTimeout(() => setGameStarted(true), 100);
-              } else {
-                // Toggle pause/play
-                setIsPaused(prev => !prev);
-              }
-            }}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            {gameOver ? 'Play Again' : (isPaused ? 'Resume' : 'Pause')}
-          </button>
-        </>
-      )}
+            {/* Render current tetromino */}
+            {currentTetromino &&
+              currentTetromino.shape.map((row, i) =>
+                row.map((cell, j) => {
+                  if (cell === 0) return null;
+                  const x = currentPosition.x + j;
+                  const y = currentPosition.y + i;
+                  
+                  // Don't render if outside the visible grid
+                  if (y < 0 || y >= BOARD_HEIGHT || x < 0 || x >= BOARD_WIDTH) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div
+                      key={`tetromino-${i}-${j}`}
+                      className={`absolute w-[30px] h-[30px] border border-gray-800 ${currentTetromino.color}`}
+                      style={{
+                        left: `${x * 30}px`,
+                        top: `${y * 30}px`,
+                      }}
+                    />
+                  );
+                })
+              )}
+          </div>
+        </div>
+        
+        {/* Side Panel */}
+        <div className="flex flex-col justify-between h-full">
+          <div className="flex flex-col gap-8 items-center">
+            <div className="text-2xl font-bold">Score: {score}</div>
+            <div className="flex flex-col items-center">
+              <div className="text-xl font-semibold mb-2">Next Piece</div>
+              <div className="border-4 border-gray-600 bg-gray-800 rounded-lg p-4 w-32 h-32 flex items-center justify-center">
+                {nextTetromino && (
+                  <div className="relative" style={{ width: `${nextTetromino.shape[0].length * 24}px`, height: `${nextTetromino.shape.length * 24}px` }}>
+                    {nextTetromino.shape.map((row, i) =>
+                      row.map((cell, j) => {
+                        if (cell === 0) return null;
+                        return (
+                          <div
+                            key={`next-${i}-${j}`}
+                            className={`absolute w-6 h-6 ${nextTetromino.color} border border-gray-700`}
+                            style={{
+                              left: `${j * 24}px`,
+                              top: `${i * 24}px`,
+                            }}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Game Controls */}
+          <div className="flex flex-col items-center gap-4 w-full">
+            {!gameStarted ? (
+              <button
+                onClick={() => setGameStarted(true)}
+                className="px-6 py-3 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors w-full"
+              >
+                Start Game
+              </button>
+            ) : (
+              <>
+                {gameOver && (
+                  <div className="text-2xl font-bold text-red-500">Game Over!</div>
+                )}
+                {isPaused && !gameOver && (
+                  <div className="text-2xl font-bold text-yellow-500">Paused</div>
+                )}
+                <button
+                  onClick={() => {
+                    if (gameOver) {
+                      setGameStarted(false);
+                      setTimeout(() => setGameStarted(true), 100);
+                    } else {
+                      setIsPaused(prev => !prev);
+                    }
+                  }}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full"
+                >
+                  {gameOver ? 'Play Again' : (isPaused ? 'Resume' : 'Pause')}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
