@@ -480,8 +480,8 @@ const TetrisBoard: React.FC = () => {
               <h3 className="text-lg font-bold mb-2 text-white">How to Play</h3>
               <div className="text-base space-y-1 text-gray-200">
                 <p>← → : Move Left/Right</p>
-                <p>↑ : Rotate</p>
                 <p>↓ : Soft Drop</p>
+                <p>↑ : Rotate</p>
                 <p>Space : Rotate</p>
                 <p>P : Pause</p>
               </div>
