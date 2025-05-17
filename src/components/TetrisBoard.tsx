@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 
 // Types
-type Cell = 'empty' | 'filled';
+type Cell = { type: 'empty' } | { type: 'filled'; color: string };
 type Grid = Cell[][];
 
 interface Position {
@@ -85,7 +85,9 @@ type TetrominoKey = keyof typeof TETROMINOES;
 const TetrisBoard: React.FC = () => {
   // Game state
   const [grid, setGrid] = useState<Grid>(
-    Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill('empty'))
+    Array(BOARD_HEIGHT).fill(null).map(() => 
+      Array(BOARD_WIDTH).fill({ type: 'empty' } as const)
+    )
   );
   const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null);
   const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null);
@@ -110,7 +112,7 @@ const TetrisBoard: React.FC = () => {
     setIsPaused(false);
     setGameOver(false);
     setScore(0);
-    setGrid(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill('empty')));
+    setGrid(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill({ type: 'empty' } as const)));
     const firstTetromino = getRandomTetromino();
     const nextTetromino = getRandomTetromino();
     const startX = Math.floor((BOARD_WIDTH - firstTetromino.shape[0].length) / 2);
@@ -143,9 +145,9 @@ const TetrisBoard: React.FC = () => {
           
           // Lock the piece in the grid
           if (y >= 0 && y < BOARD_HEIGHT && x >= 0 && x < BOARD_WIDTH) {
-            if (!newGrid[y]) newGrid[y] = Array(BOARD_WIDTH).fill('empty');
+            if (!newGrid[y]) newGrid[y] = Array(BOARD_WIDTH).fill({ type: 'empty' } as const);
             newGrid[y] = [...newGrid[y]];
-            newGrid[y][x] = 'filled';
+            newGrid[y][x] = { type: 'filled', color: currentTetromino.color };
             pieceLocked = true;
           }
         }
@@ -163,7 +165,7 @@ const TetrisBoard: React.FC = () => {
       const updatedGrid = [...newGrid];
       
       for (let y = 0; y < updatedGrid.length; y++) {
-        if (updatedGrid[y] && updatedGrid[y].every(cell => cell === 'filled')) {
+        if (updatedGrid[y] && updatedGrid[y].every(cell => cell.type === 'filled')) {
           completedLines.push(y);
         }
       }
@@ -174,7 +176,7 @@ const TetrisBoard: React.FC = () => {
         
         // Remove completed lines and add new empty ones at the top
         const newGridWithoutLines = updatedGrid.filter((_, index) => !completedLines.includes(index));
-        const newLines = Array(completedLines.length).fill(null).map(() => Array(BOARD_WIDTH).fill('empty'));
+        const newLines = Array(completedLines.length).fill(null).map(() => Array(BOARD_WIDTH).fill({ type: 'empty' } as const));
         setGrid([...newLines, ...newGridWithoutLines]);
       } else {
         setGrid(updatedGrid);
@@ -191,7 +193,7 @@ const TetrisBoard: React.FC = () => {
           if (cell === 0) return false;
           const x = startX + j;
           const y = i; // Start at y=0 for collision check
-          return y >= 0 && updatedGrid[y] && updatedGrid[y][x] === 'filled';
+          return y >= 0 && updatedGrid[y] && updatedGrid[y][x].type === 'filled';
         })
       );
       
@@ -223,7 +225,7 @@ const TetrisBoard: React.FC = () => {
           x < 0 ||
           x >= BOARD_WIDTH ||
           y >= BOARD_HEIGHT ||
-          (y >= 0 && grid[y] && grid[y][x] === 'filled')
+          (y >= 0 && grid[y] && grid[y][x].type === 'filled')
         );
       })
     );
@@ -257,7 +259,7 @@ const TetrisBoard: React.FC = () => {
           x < 0 ||
           x >= BOARD_WIDTH ||
           y >= BOARD_HEIGHT ||
-          (y >= 0 && grid[y] && grid[y][x] === 'filled')
+          (y >= 0 && grid[y] && grid[y][x].type === 'filled')
         );
       })
     );
@@ -328,28 +330,44 @@ const TetrisBoard: React.FC = () => {
         {/* Game Board */}
         <div>
           <div 
-            className="border-4 border-gray-700 bg-gray-900 relative"
+            className="relative bg-gray-900"
             style={{
+              backgroundImage: `
+                linear-gradient(to right, rgba(75, 85, 99, 0.5) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(75, 85, 99, 0.5) 1px, transparent 1px)
+              `,
+              backgroundSize: '30px 30px',
               width: `${BOARD_WIDTH * 30}px`,
               height: `${BOARD_HEIGHT * 30}px`,
               opacity: gameStarted ? 1 : 0.5,
               transition: 'opacity 0.3s',
+              border: '2px solid #4B5563',
+              boxSizing: 'border-box',
+              position: 'relative',
+              overflow: 'hidden',
+              backgroundPosition: '-0.5px -0.5px'  // Adjust grid alignment
             }}
           >
-            {/* Render grid cells */}
+            {/* Render placed pieces */}
             {memoizedGrid.map((row, y) =>
-              row.map((cell, x) => (
-                <div
-                  key={`${y}-${x}`}
-                  className={`absolute w-[30px] h-[30px] border border-gray-800 ${
-                    cell === 'filled' ? 'bg-gray-600' : 'bg-gray-800'
-                  }`}
-                  style={{
-                    left: `${x * 30}px`,
-                    top: `${y * 30}px`,
-                  }}
-                />
-              ))
+              row.map((cell, x) => {
+                if (cell.type === 'empty') return null;
+                return (
+                  <div
+                    key={`${y}-${x}`}
+                    className="absolute bg-gray-500 border border-opacity-20 border-white"
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      left: `${x * 30}px`,
+                      top: `${y * 30}px`,
+                      boxSizing: 'border-box',
+                      pointerEvents: 'none',
+                      transform: 'translateZ(0)'
+                    }}
+                  />
+                );
+              })
             )}
 
             {/* Render current tetromino */}
@@ -368,10 +386,15 @@ const TetrisBoard: React.FC = () => {
                   return (
                     <div
                       key={`tetromino-${i}-${j}`}
-                      className={`absolute w-[30px] h-[30px] border border-gray-800 ${currentTetromino.color}`}
+                      className={`absolute ${currentTetromino.color} border border-opacity-20 border-white`}
                       style={{
+                        width: '30px',
+                        height: '30px',
                         left: `${x * 30}px`,
                         top: `${y * 30}px`,
+                        boxSizing: 'border-box',
+                        pointerEvents: 'none',
+                        transform: 'translateZ(0)'
                       }}
                     />
                   );
