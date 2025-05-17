@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useContext } from "react";
+import { useTetris } from "./TetrisContext";
 
 // Types
 type Cell = { type: 'empty' } | { type: 'filled'; color: string };
@@ -92,10 +93,17 @@ const TetrisBoard: React.FC = () => {
   const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null);
   const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null);
   const [currentPosition, setCurrentPosition] = useState<Position>({ x: 0, y: 0 });
-  const [gameOver, setGameOver] = useState<boolean>(false);
-  const [score, setScore] = useState<number>(0);
-  const [isPaused, setIsPaused] = useState<boolean>(true);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
+  
+  // Get game state from context
+  const { 
+    score, 
+    setScore, 
+    gameOver, 
+    setGameOver, 
+    isPaused, 
+    setIsPaused 
+  } = useTetris();
   
   // Memoize the grid to prevent unnecessary re-renders
   const memoizedGrid = useMemo(() => grid, [grid]);
@@ -107,20 +115,23 @@ const TetrisBoard: React.FC = () => {
     return { ...TETROMINOES[randomName] };
   }, []);
 
-  // Initialize the game
-  const startGame = useCallback((): void => {
-    setIsPaused(false);
-    setGameOver(false);
-    setScore(0);
-    setGrid(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill({ type: 'empty' } as const)));
+  const createEmptyGrid = useCallback(() => {
+    return Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill({ type: 'empty' } as const));
+  }, []);
+
+  const handlePause = useCallback(() => {
+    if (gameOver) return;
+    setIsPaused(prevIsPaused => !prevIsPaused);
+  }, [gameOver, setIsPaused]);
+
+  const spawnTetromino = useCallback(() => {
     const firstTetromino = getRandomTetromino();
     const nextTetromino = getRandomTetromino();
     const startX = Math.floor((BOARD_WIDTH - firstTetromino.shape[0].length) / 2);
     setCurrentTetromino(firstTetromino);
     setNextTetromino(nextTetromino);
-    setCurrentPosition({ x: startX, y: -2 });
-    setIsPaused(false);
-  }, [getRandomTetromino]);
+    setCurrentPosition({ x: startX, y: 0 });
+  }, [getRandomTetromino, setIsPaused, setGameOver, setScore]);
 
   // Lock the current tetromino in place
   const lockTetromino = useCallback((): void => {
@@ -189,7 +200,9 @@ const TetrisBoard: React.FC = () => {
           default:
             points = completedLines.length * 100;  // Fallback for any unexpected cases
         }
-        setScore(prev => prev + points);
+        if (setScore && typeof score === 'number') {
+          setScore(score + points);
+        }
         
         // Remove completed lines and add new empty ones at the top
         const newGridWithoutLines = updatedGrid.filter((_, index) => !completedLines.includes(index));
@@ -309,7 +322,9 @@ const TetrisBoard: React.FC = () => {
           break;
         case 'p':
         case 'P':
-          setIsPaused(prev => !prev);
+          if (setIsPaused) {
+            setIsPaused(!isPaused);
+          }
           break;
         default:
           break;
@@ -334,12 +349,22 @@ const TetrisBoard: React.FC = () => {
     return () => clearInterval(interval);
   }, [currentTetromino, gameOver, isPaused, moveTetromino, lockTetromino, gameStarted]);
 
-  // Start the game when gameStarted changes to true
+  // Initialize the game
   useEffect(() => {
     if (gameStarted) {
-      startGame();
+      setGameOver(false);
+      setScore(0);
+      setGrid(createEmptyGrid());
+      setIsPaused(false);
+      
+      const firstTetromino = getRandomTetromino();
+      const nextTetromino = getRandomTetromino();
+      const startX = Math.floor((BOARD_WIDTH - firstTetromino.shape[0].length) / 2);
+      setCurrentTetromino(firstTetromino);
+      setNextTetromino(nextTetromino);
+      setCurrentPosition({ x: startX, y: 0 });
     }
-  }, [gameStarted, startGame]);
+  }, [gameStarted, setGameOver, setScore, setIsPaused, createEmptyGrid, getRandomTetromino]);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -462,35 +487,33 @@ const TetrisBoard: React.FC = () => {
                 <p>P : Pause</p>
               </div>
             </div>
-            {!gameStarted ? (
+            {!gameStarted && (
               <button
                 onClick={() => setGameStarted(true)}
                 className="px-6 py-3 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors w-full"
               >
                 Start Game
               </button>
-            ) : (
-              <>
-                {gameOver && (
-                  <div className="text-2xl font-bold text-red-500">Game Over!</div>
-                )}
-                {isPaused && !gameOver && (
-                  <div className="text-2xl font-bold text-yellow-500">Paused</div>
-                )}
-                <button
-                  onClick={() => {
-                    if (gameOver) {
-                      setGameStarted(false);
-                      setTimeout(() => setGameStarted(true), 100);
-                    } else {
-                      setIsPaused(prev => !prev);
-                    }
-                  }}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full"
-                >
-                  {gameOver ? 'Play Again' : (isPaused ? 'Resume' : 'Pause')}
-                </button>
-              </>
+            )}
+            {gameStarted && (
+              <button
+                onClick={() => {
+                  if (gameOver) {
+                    setGameOver(false);
+                    setScore(0);
+                    setGrid(createEmptyGrid());
+                    setGameStarted(false);
+                    setIsPaused(false);
+                  } else {
+                    handlePause();
+                  }
+                }}
+                className={`px-6 py-3 text-white text-xl font-bold rounded-lg transition-colors w-full ${
+                  gameOver ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {gameOver ? 'New Game' : isPaused ? 'Resume' : 'Pause'}
+              </button>
             )}
           </div>
         </div>
