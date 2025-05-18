@@ -32,7 +32,7 @@ const TetrisGame: React.FC = () => {
     <div className="flex flex-col items-center gap-6">
       <div className="flex items-start gap-8 h-[600px]">
         {/* Game Board */}
-        <div>
+        <div className="relative">
           <Board
             grid={grid}
             currentTetromino={currentTetromino}
@@ -41,6 +41,23 @@ const TetrisGame: React.FC = () => {
             isPaused={isPaused}
             gameStarted={gameStarted}
           />
+          {gameOver && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 pointer-events-auto">
+              <div className="bg-gray-900 bg-opacity-80 p-8 rounded-lg text-center backdrop-blur-sm">
+                <h2 className="text-3xl font-bold text-red-500 mb-4">Game Over!</h2>
+                <p className="text-xl text-white mb-6">Score: {score}</p>
+                <button
+                  onClick={() => {
+                    resetGame();
+                    startGame();
+                  }}
+                  className="px-6 py-3 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Side Panel */}
@@ -65,25 +82,7 @@ const TetrisGame: React.FC = () => {
           />
         </div>
       </div>
-      
-      {/* Game Over Overlay */}
-      {gameOver && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-8 rounded-lg text-center">
-            <h2 className="text-3xl font-bold text-red-500 mb-4">Game Over!</h2>
-            <p className="text-xl text-white mb-6">Your score: {score}</p>
-            <button
-              onClick={() => {
-                resetGame();
-                startGame();
-              }}
-              className="px-6 py-3 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Play Again
-            </button>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
