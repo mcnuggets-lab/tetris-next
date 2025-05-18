@@ -68,7 +68,7 @@ Built with ❤️ and 🤖 using Vibe Coding
 
 ## My comments and feelings on vibe coding
 
-This is the only section written by a human. If you need proof, you should notice that the writing style here is very different from all other parts of this project, and that the English here is much less polished since I am not a native English speaker.
+This is the only section written by a human (even for the manual deployment step I simply follow the instruction from AI blindly). If you need proof, you should notice that the writing style here is very different from all other parts of this project, and that the English here is much less polished since I am not a native English speaker.
 
 I am someone who knows how to write an app in React and Next.js, so I have an idea of how good the AI is at writing code. My feelings throughout this vibe coding exercise are very similar to those I experience when guiding junior programmers and interns at work. They can be incompetent and make a lot of mistakes from time to time, but they are also very eager to learn from you and complete the work you assign to them—though the iterations with AI are much faster.
 
