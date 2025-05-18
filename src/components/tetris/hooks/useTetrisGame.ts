@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useCallback, useRef } from 'react';
 import { GameState, GameAction } from '../types';
 import { getRandomTetromino, rotateMatrix } from '../utils/tetrominoes';
-import { CELL_STATE, TETROMINO_SIZES, STARTING_POSITION } from '../constants/tetrominoConstants';
+import { TETROMINO_SIZES, STARTING_POSITION } from '../constants/tetrominoConstants';
 import { 
   createEmptyGrid, 
   checkCollision, 
@@ -11,7 +11,6 @@ import {
 } from '../utils/board';
 import { useTetris } from '../../TetrisContext';
 import { 
-  BOARD_WIDTH, 
   BOARD_HEIGHT, 
   STORAGE_KEYS,
   INITIAL_DROP_SPEED,
@@ -22,10 +21,8 @@ import {
   MOVE_LEFT,
   MOVE_RIGHT,
   MOVE_DOWN,
-  DIRECTION,
   ACTION_TYPES
 } from '../constants/gameConstants';
-import { TETROMINOES } from '../constants/tetrominoConstants';
 
 const initialState: GameState = {
   grid: createEmptyGrid(),

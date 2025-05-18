@@ -1,4 +1,3 @@
-import type { Tetromino, TetrominoKey } from '../types';
 
 // Tetromino cell states
 export const CELL_STATE = {

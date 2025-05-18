@@ -35,7 +35,7 @@ type ActionTypeValue = ActionType[keyof ActionType];
 
 export type GameAction = {
   type: ActionTypeValue;
-  payload?: any; // Optional payload for actions that need to pass data
+  payload?: unknown; // Optional payload for actions that need to pass data
 };
 
 // Props for components
