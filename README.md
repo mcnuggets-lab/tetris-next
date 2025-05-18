@@ -2,7 +2,7 @@
 
 A modern implementation of the classic Tetris game built with Next.js, TypeScript, and React. This project showcases a clean, responsive UI with smooth animations and game mechanics.
 
-![Tetris Gameplay](https://via.placeholder.com/800x500.png?text=Tetris+Gameplay+Screenshot)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Play%20Now-00c7b7?style=for-the-badge&logo=vercel)](https://tetris-next-two.vercel.app/)
 
 ## 🎮 Features
 
@@ -99,13 +99,13 @@ src/
 - `tailwindcss`: ^3.0.0
 - `geist`: ^1.1.0
 
+## 🚀 Live Demo
+
+Play the game here: [https://tetris-next-two.vercel.app/](https://tetris-next-two.vercel.app/)
+
 ## 🚀 Deployment
 
-This project can be easily deployed to Vercel, Netlify, or any other platform that supports Next.js applications.
-
-### Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Ftetris-next)
+This project is deployed on [Vercel](https://vercel.com/) and can be easily deployed to any platform that supports Next.js applications.
 
 ## 🤝 Contributing
 
