@@ -2,6 +2,8 @@
 
 A modern implementation of the classic Tetris game built with Next.js, TypeScript, and React. This project showcases a clean, responsive UI with smooth animations and game mechanics.
 
+> ℹ️ **Fun Fact**: This project was built entirely through AI pair programming! Check out the [VIBE_CODING.md](VIBE_CODING.md) file to learn more about the development process.
+
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Play%20Now-00c7b7?style=for-the-badge&logo=vercel)](https://tetris-next-two.vercel.app/)
 
 ## 🎮 Features
