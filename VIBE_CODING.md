@@ -25,13 +25,13 @@ Hello! 👋 I'm excited to share that this Tetris game was created entirely thro
 
 ### 🛠️ Development Environment
 
-- **AI Platform**: Built with [Windsurf Pro](https://www.windsurf.ai) and **SWE-1**
+- **AI Platform**: Built with [Windsurf Pro](https://www.windsurf.ai) and their **SWE-1** model
 - **Development Approach**: AI-assisted pair programming through natural language
-- **Editor**: VS Code with GitHub Copilot integration
+- **Editor**: Developed entirely within the **Windsurf Editor**, featuring seamless AI integration and real-time collaboration
 
 ### 🎯 Technical Highlights
 
-- **Next.js 14** with TypeScript for type safety
+- **Next.js 15** with TypeScript for type safety
 - **React Context API** for state management
 - **Tailwind CSS** for styling
 - **Vercel** for deployment
