@@ -1,5 +1,10 @@
 import React, { memo } from 'react';
 import { NextPieceProps } from '../types';
+import { CELL_STATE } from '../constants/tetrominoConstants';
+
+// Next piece display constants
+const PIECE_CELL_SIZE = 24; // Size of each cell in the next piece display
+const NEXT_PIECE_CONTAINER_SIZE = '8rem'; // Size of the next piece container (w-32 h-32 = 8rem)
 
 const NextPiece: React.FC<NextPieceProps> = ({ tetromino }) => {
   if (!tetromino) return null;
@@ -7,24 +12,29 @@ const NextPiece: React.FC<NextPieceProps> = ({ tetromino }) => {
   return (
     <div className="flex flex-col items-center">
       <div className="text-xl font-semibold mb-2">Next Piece</div>
-      <div className="border-4 border-gray-600 bg-gray-800 rounded-lg p-4 w-32 h-32 flex items-center justify-center">
+      <div 
+        className="border-4 border-gray-600 bg-gray-800 rounded-lg p-4 flex items-center justify-center"
+        style={{ width: NEXT_PIECE_CONTAINER_SIZE, height: NEXT_PIECE_CONTAINER_SIZE }}
+      >
         <div 
           className="relative" 
           style={{ 
-            width: `${tetromino.shape[0].length * 24}px`, 
-            height: `${tetromino.shape.length * 24}px` 
+            width: `${tetromino.shape[0].length * PIECE_CELL_SIZE}px`, 
+            height: `${tetromino.shape.length * PIECE_CELL_SIZE}px` 
           }}
         >
           {tetromino.shape.map((row, i) =>
             row.map((cell, j) => {
-              if (cell === 0) return null;
+              if (cell === CELL_STATE.EMPTY) return null;
               return (
                 <div
                   key={`next-${i}-${j}`}
-                  className={`absolute w-6 h-6 ${tetromino.color} border border-gray-700`}
+                  className={`absolute ${tetromino.color} border border-gray-700`}
                   style={{
-                    left: `${j * 24}px`,
-                    top: `${i * 24}px`,
+                    width: `${PIECE_CELL_SIZE}px`,
+                    height: `${PIECE_CELL_SIZE}px`,
+                    left: `${j * PIECE_CELL_SIZE}px`,
+                    top: `${i * PIECE_CELL_SIZE}px`,
                   }}
                 />
               );

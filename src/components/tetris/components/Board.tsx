@@ -1,8 +1,15 @@
 import React, { memo } from 'react';
 import { BoardProps } from '../types';
+import { BOARD_WIDTH, BOARD_HEIGHT } from '../constants/gameConstants';
+import { CELL_STATE } from '../constants/tetrominoConstants';
 
-const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20;
+// Board styling constants
+const CELL_SIZE = 30; // Size of each cell in pixels
+const GRID_OPACITY = 0.3; // Opacity of the grid lines
+const GRID_LINE_COLOR = `rgba(200, 200, 200, ${GRID_OPACITY})`; // Color of the grid lines
+const BORDER_COLOR = '#6B7280'; // Color of the board border
+const INACTIVE_OPACITY = 0.5; // Opacity when game is not started or is over
+const PAUSED_OPACITY = 0.7; // Opacity when game is paused
 
 const Board: React.FC<BoardProps> = ({
   grid,
@@ -16,15 +23,15 @@ const Board: React.FC<BoardProps> = ({
     <div className="relative bg-gray-900"
       style={{
         backgroundImage: `
-          linear-gradient(to right, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(200, 200, 200, 0.3) 1px, transparent 1px)
+          linear-gradient(to right, ${GRID_LINE_COLOR} 1px, transparent 1px),
+          linear-gradient(to bottom, ${GRID_LINE_COLOR} 1px, transparent 1px)
         `,
-        backgroundSize: '30px 30px',
-        width: `${BOARD_WIDTH * 30}px`,
-        height: `${BOARD_HEIGHT * 30}px`,
-        opacity: (!gameStarted || gameOver) ? 0.5 : (isPaused ? 0.7 : 1),
+        backgroundSize: `${CELL_SIZE}px ${CELL_SIZE}px`,
+        width: `${BOARD_WIDTH * CELL_SIZE}px`,
+        height: `${BOARD_HEIGHT * CELL_SIZE}px`,
+        opacity: (!gameStarted || gameOver) ? INACTIVE_OPACITY : (isPaused ? PAUSED_OPACITY : 1),
         transition: 'opacity 0.3s ease-in-out',
-        border: '2px solid #6B7280',
+        border: `2px solid ${BORDER_COLOR}`,
         boxSizing: 'border-box',
         position: 'relative',
         overflow: 'hidden'
@@ -39,10 +46,10 @@ const Board: React.FC<BoardProps> = ({
               key={`${y}-${x}`}
               className="absolute bg-gray-500 border border-opacity-20 border-white"
               style={{
-                width: '30px',
-                height: '30px',
-                left: `${x * 30}px`,
-                top: `${y * 30}px`,
+                width: `${CELL_SIZE}px`,
+                height: `${CELL_SIZE}px`,
+                left: `${x * CELL_SIZE}px`,
+                top: `${y * CELL_SIZE}px`,
                 boxSizing: 'border-box',
                 pointerEvents: 'none',
                 transform: 'translateZ(0)'
@@ -56,7 +63,7 @@ const Board: React.FC<BoardProps> = ({
       {currentTetromino &&
         currentTetromino.shape.map((row, i) =>
           row.map((cell, j) => {
-            if (cell === 0) return null;
+            if (cell === CELL_STATE.EMPTY) return null;
             const x = currentPosition.x + j;
             const y = currentPosition.y + i;
             
@@ -70,10 +77,10 @@ const Board: React.FC<BoardProps> = ({
                 key={`tetromino-${i}-${j}`}
                 className={`absolute ${currentTetromino.color} border border-opacity-20 border-white`}
                 style={{
-                  width: '30px',
-                  height: '30px',
-                  left: `${x * 30}px`,
-                  top: `${y * 30}px`,
+                  width: `${CELL_SIZE}px`,
+                  height: `${CELL_SIZE}px`,
+                  left: `${x * CELL_SIZE}px`,
+                  top: `${y * CELL_SIZE}px`,
                   boxSizing: 'border-box',
                   pointerEvents: 'none',
                   transform: 'translateZ(0)'

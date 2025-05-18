@@ -1,11 +1,14 @@
 import { Grid, Position, Tetromino } from '../types';
-
-const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20;
+import { 
+  BOARD_WIDTH, 
+  BOARD_HEIGHT, 
+  BOARD_CELL_EMPTY 
+} from '../constants/gameConstants';
+import { CELL_STATE } from '../constants/tetrominoConstants';
 
 export const createEmptyGrid = (): Grid => {
   return Array(BOARD_HEIGHT).fill(null).map(() => 
-    Array(BOARD_WIDTH).fill({ type: 'empty' } as const)
+    Array(BOARD_WIDTH).fill(BOARD_CELL_EMPTY)
   );
 };
 
@@ -16,7 +19,7 @@ export const checkCollision = (
 ): boolean => {
   return tetromino.shape.some((row, i) =>
     row.some((cell, j) => {
-      if (cell === 0) return false;
+      if (cell === CELL_STATE.EMPTY) return false;
       const x = position.x + j;
       const y = position.y + i;
       return (
@@ -38,7 +41,7 @@ export const mergeTetrominoWithGrid = (
   
   tetromino.shape.forEach((row, i) => {
     row.forEach((cell, j) => {
-      if (cell === 0) return;
+      if (cell === CELL_STATE.EMPTY) return;
       const x = position.x + j;
       const y = position.y + i;
       
@@ -64,7 +67,7 @@ export const clearCompletedLines = (grid: Grid): { newGrid: Grid; linesCleared: 
   if (completedLines.length > 0) {
     const newGridWithoutLines = updatedGrid.filter((_, index) => !completedLines.includes(index));
     const newLines = Array(completedLines.length).fill(null).map(() => 
-      Array(BOARD_WIDTH).fill({ type: 'empty' } as const)
+      Array(BOARD_WIDTH).fill(BOARD_CELL_EMPTY)
     );
     return { newGrid: [...newLines, ...newGridWithoutLines], linesCleared: completedLines.length };
   }
@@ -72,12 +75,18 @@ export const clearCompletedLines = (grid: Grid): { newGrid: Grid; linesCleared: 
   return { newGrid: updatedGrid, linesCleared: 0 };
 };
 
+import { SCORE_PER_LINE } from '../constants/gameConstants';
+
+// Score calculation based on the number of lines cleared
 export const calculateScore = (linesCleared: number): number => {
-  switch (linesCleared) {
-    case 1: return 100;
-    case 2: return 300;
-    case 3: return 500;
-    case 4: return 800;
-    default: return 0;
-  }
+  // Create a mapping of line counts to score values
+  const lineScores = {
+    1: SCORE_PER_LINE.SINGLE,
+    2: SCORE_PER_LINE.DOUBLE,
+    3: SCORE_PER_LINE.TRIPLE,
+    4: SCORE_PER_LINE.TETRIS,
+  } as const;
+
+  // Return the score for the number of lines cleared, or 0 if not found
+  return lineScores[linesCleared as keyof typeof lineScores] || 0;
 };

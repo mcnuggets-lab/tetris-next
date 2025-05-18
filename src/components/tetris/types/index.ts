@@ -8,6 +8,7 @@ export interface Position {
 }
 
 export interface Tetromino {
+  type: TetrominoKey;
   shape: number[][];
   color: string;
 }
@@ -26,17 +27,16 @@ export interface GameState {
   score: number;
 }
 
+import { ACTION_TYPES } from '../constants/gameConstants';
+
 // Game actions
-export type GameAction =
-  | { type: 'MOVE_LEFT' }
-  | { type: 'MOVE_RIGHT' }
-  | { type: 'MOVE_DOWN' }
-  | { type: 'HARD_DROP' }
-  | { type: 'ROTATE' }
-  | { type: 'PAUSE' }
-  | { type: 'START_GAME' }
-  | { type: 'RESET_GAME' }
-  | { type: 'TICK' };
+type ActionType = typeof ACTION_TYPES;
+type ActionTypeValue = ActionType[keyof ActionType];
+
+export type GameAction = {
+  type: ActionTypeValue;
+  payload?: any; // Optional payload for actions that need to pass data
+};
 
 // Props for components
 export interface BoardProps {

@@ -25,7 +25,7 @@ Hello! 👋 I'm excited to share that this Tetris game was created entirely thro
 
 ### 🛠️ Development Environment
 
-- **AI Platform**: Built with [Windsurf Pro](https://www.windsurf.ai) and their **SWE-1** model
+- **AI Platform**: Built with [Windsurf Pro](https://www.windsurf.ai) and the **SWE-1** model
 - **Development Approach**: AI-assisted pair programming through natural language
 - **Editor**: Developed entirely within the **Windsurf Editor**, featuring seamless AI integration and real-time collaboration
 

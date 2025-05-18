@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useCallback, useRef } from 'react';
 import { GameState, GameAction } from '../types';
 import { getRandomTetromino, rotateMatrix } from '../utils/tetrominoes';
+import { CELL_STATE, TETROMINO_SIZES, STARTING_POSITION } from '../constants/tetrominoConstants';
 import { 
   createEmptyGrid, 
   checkCollision, 
@@ -9,43 +10,58 @@ import {
   calculateScore
 } from '../utils/board';
 import { useTetris } from '../../TetrisContext';
-
-const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20;
+import { 
+  BOARD_WIDTH, 
+  BOARD_HEIGHT, 
+  STORAGE_KEYS,
+  INITIAL_DROP_SPEED,
+  SPEED_INCREASE_THRESHOLD,
+  SPEED_INCREASE_AMOUNT,
+  MIN_DROP_SPEED,
+  WALL_KICKS,
+  MOVE_LEFT,
+  MOVE_RIGHT,
+  MOVE_DOWN,
+  DIRECTION,
+  ACTION_TYPES
+} from '../constants/gameConstants';
+import { TETROMINOES } from '../constants/tetrominoConstants';
 
 const initialState: GameState = {
   grid: createEmptyGrid(),
   currentTetromino: null,
   nextTetromino: null,
   currentPosition: { x: 0, y: 0 },
-  gameStarted: false,
   gameOver: false,
+  gameStarted: false,
   isPaused: false,
   score: 0,
 };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
-  switch (action.type) {
-    case 'START_GAME':
+  const { type } = action;
+  
+  switch (type) {
+    case ACTION_TYPES.START_GAME: {
       const firstTetromino = getRandomTetromino();
-      const nextTetromino = getRandomTetromino();
-      const startX = Math.floor((BOARD_WIDTH - firstTetromino.shape[0].length) / 2);
+      const startX = STARTING_POSITION.getCenterX(firstTetromino.shape[0].length);
       
       return {
         ...initialState,
         gameStarted: true,
         currentTetromino: firstTetromino,
-        nextTetromino,
-        currentPosition: { x: startX, y: 0 },
+        nextTetromino: getRandomTetromino(),
+        currentPosition: { x: startX, y: STARTING_POSITION.y },
       };
+    }
       
-    case 'RESET_GAME':
+    case ACTION_TYPES.RESET_GAME:
       return { ...initialState };
       
-    case 'PAUSE':
+    case ACTION_TYPES.PAUSE:
       return { ...state, isPaused: !state.isPaused };
       
-    case 'TICK':
+    case ACTION_TYPES.TICK:
       if (state.gameOver || state.isPaused || !state.gameStarted || !state.currentTetromino) {
         return state;
       }
@@ -62,11 +78,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         const { newGrid: clearedGrid, linesCleared } = clearCompletedLines(newGrid);
         const scoreIncrement = calculateScore(linesCleared);
         
-        // Check if game over (new piece would collide immediately)
+        // Get the next tetromino and prepare the one after that
         const nextTetromino = state.nextTetromino || getRandomTetromino();
         const newNextTetromino = getRandomTetromino();
-        const startX = Math.floor((BOARD_WIDTH - nextTetromino.shape[0].length) / 2);
+        const tetrominoType = nextTetromino.type as keyof typeof TETROMINO_SIZES;
+        const startX = STARTING_POSITION.getCenterX(TETROMINO_SIZES[tetrominoType].width);
         
+        // Check if game over (new piece would collide immediately)
         const wouldCollide = checkCollision(
           clearedGrid,
           nextTetromino,
@@ -77,9 +95,9 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           // Game over
           const highScore = Math.max(
             state.score + scoreIncrement,
-            parseInt(localStorage.getItem('tetrisHighScore') || '0', 10)
+            parseInt(localStorage.getItem(STORAGE_KEYS.HIGH_SCORE) || '0', 10)
           );
-          localStorage.setItem('tetrisHighScore', highScore.toString());
+          localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, highScore.toString());
           
           return { ...state, gameOver: true };
         }
@@ -90,18 +108,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
           grid: clearedGrid,
           currentTetromino: nextTetromino,
           nextTetromino: newNextTetromino,
-          currentPosition: { x: startX, y: 0 },
+          currentPosition: { x: startX, y: STARTING_POSITION.y },
           score: state.score + scoreIncrement,
         };
       }
       
-    case 'MOVE_LEFT':
-    case 'MOVE_RIGHT':
+    case ACTION_TYPES.MOVE_LEFT:
+    case ACTION_TYPES.MOVE_RIGHT:
       if (state.gameOver || state.isPaused || !state.gameStarted || !state.currentTetromino) {
         return state;
       }
       
-      const dx = action.type === 'MOVE_LEFT' ? -1 : 1;
+      const dx = action.type === ACTION_TYPES.MOVE_LEFT ? MOVE_LEFT : MOVE_RIGHT;
       const newX = state.currentPosition.x + dx;
       
       if (!checkCollision(state.grid, state.currentTetromino, { 
@@ -112,12 +130,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       }
       return state;
       
-    case 'MOVE_DOWN':
+    case ACTION_TYPES.MOVE_DOWN:
       if (state.gameOver || state.isPaused || !state.gameStarted || !state.currentTetromino) {
         return state;
       }
       
-      const newY = state.currentPosition.y + 1;
+      const newY = state.currentPosition.y + MOVE_DOWN;
       
       if (!checkCollision(state.grid, state.currentTetromino, { 
         ...state.currentPosition, 
@@ -133,21 +151,21 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       
       const nextTetrominoAfterDrop = state.nextTetromino || getRandomTetromino();
       const newNextTetrominoAfterDrop = getRandomTetromino();
-      const startXAfterDrop = Math.floor((BOARD_WIDTH - nextTetrominoAfterDrop.shape[0].length) / 2);
+      const startXAfterDrop = STARTING_POSITION.getCenterX(nextTetrominoAfterDrop.shape[0].length);
       
       const wouldCollideAfterDrop = checkCollision(
         clearedGridAfterDrop,
         nextTetrominoAfterDrop,
-        { x: startXAfterDrop, y: 0 }
+        { x: startXAfterDrop, y: STARTING_POSITION.y }
       );
       
       if (wouldCollideAfterDrop) {
         // Game over
         const highScore = Math.max(
           state.score + dropScoreIncrement,
-          parseInt(localStorage.getItem('tetrisHighScore') || '0', 10)
+          parseInt(localStorage.getItem(STORAGE_KEYS.HIGH_SCORE) || '0', 10)
         );
-        localStorage.setItem('tetrisHighScore', highScore.toString());
+        localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, highScore.toString());
         
         return { 
           ...state, 
@@ -162,11 +180,11 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         grid: clearedGridAfterDrop,
         currentTetromino: nextTetrominoAfterDrop,
         nextTetromino: newNextTetrominoAfterDrop,
-        currentPosition: { x: startXAfterDrop, y: 0 },
+        currentPosition: { x: startXAfterDrop, y: STARTING_POSITION.y },
         score: state.score + dropScoreIncrement,
       };
       
-    case 'HARD_DROP':
+    case ACTION_TYPES.HARD_DROP:
       if (state.gameOver || state.isPaused || !state.gameStarted || !state.currentTetromino) {
         return state;
       }
@@ -190,24 +208,24 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       const hardDropScoreIncrement = calculateScore(hardDropLinesCleared);
       
       // Spawn new tetromino
-      const nextHardDropTetromino = state.nextTetromino || getRandomTetromino();
-      const newNextHardDropTetromino = getRandomTetromino();
-      const hardDropStartX = Math.floor((BOARD_WIDTH - nextHardDropTetromino.shape[0].length) / 2);
+      const nextTetromino = state.nextTetromino || getRandomTetromino();
+      const newNextTetromino = getRandomTetromino();
+      const startX = STARTING_POSITION.getCenterX(nextTetromino.shape[0].length);
       
       // Check if game over (new piece would collide immediately)
-      const wouldHardDropCollide = checkCollision(
+      const wouldCollide = checkCollision(
         clearedHardDropGrid,
-        nextHardDropTetromino,
-        { x: hardDropStartX, y: 0 }
+        nextTetromino,
+        { x: startX, y: STARTING_POSITION.y }
       );
       
-      if (wouldHardDropCollide) {
+      if (wouldCollide) {
         // Game over
         const highScore = Math.max(
           state.score + hardDropScoreIncrement,
-          parseInt(localStorage.getItem('tetrisHighScore') || '0', 10)
+          parseInt(localStorage.getItem(STORAGE_KEYS.HIGH_SCORE) || '0', 10)
         );
-        localStorage.setItem('tetrisHighScore', highScore.toString());
+        localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, highScore.toString());
         
         return { 
           ...state, 
@@ -220,13 +238,13 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       return {
         ...state,
         grid: clearedHardDropGrid,
-        currentTetromino: nextHardDropTetromino,
-        nextTetromino: newNextHardDropTetromino,
-        currentPosition: { x: hardDropStartX, y: 0 },
+        currentTetromino: nextTetromino,
+        nextTetromino: newNextTetromino,
+        currentPosition: { x: startX, y: STARTING_POSITION.y },
         score: state.score + hardDropScoreIncrement,
       };
       
-    case 'ROTATE':
+    case ACTION_TYPES.ROTATE:
       if (state.gameOver || state.isPaused || !state.gameStarted || !state.currentTetromino) {
         return state;
       }
@@ -239,15 +257,8 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         return { ...state, currentTetromino: rotatedTetromino };
       }
       
-      // Try wall kicks (simple version - just try moving left/right one space)
-      const kicks = [
-        { x: 1, y: 0 },  // Try right
-        { x: -1, y: 0 }, // Try left
-        { x: 2, y: 0 },  // Try right 2
-        { x: -2, y: 0 }, // Try left 2
-      ];
-      
-      for (const kick of kicks) {
+      // Try wall kicks (offsets to try when rotation causes collision)
+      for (const kick of WALL_KICKS) {
         const kickedPosition = {
           x: state.currentPosition.x + kick.x,
           y: state.currentPosition.y + kick.y,
@@ -294,6 +305,45 @@ export const useTetrisGame = () => {
     }
   }, [state, contextGameOver, contextIsPaused, score, setGameOver, setIsPaused, setScore]);
   
+  // Public API
+  const startGame = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.START_GAME });
+  }, []);
+  
+  // Reset game
+  const resetGame = useCallback(() => {
+    // Clear any existing interval before resetting
+    if (dropTimeRef.current !== null) {
+      window.clearInterval(dropTimeRef.current);
+      dropTimeRef.current = null;
+    }
+    dispatch({ type: ACTION_TYPES.RESET_GAME });
+  }, []);
+  
+  const moveLeft = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.MOVE_LEFT });
+  }, []);
+  
+  const moveRight = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.MOVE_RIGHT });
+  }, []);
+  
+  const moveDown = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.MOVE_DOWN });
+  }, []);
+  
+  const hardDrop = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.HARD_DROP });
+  }, []);
+  
+  const rotate = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.ROTATE });
+  }, []);
+  
+  const togglePause = useCallback(() => {
+    dispatch({ type: ACTION_TYPES.PAUSE });
+  }, []);
+
   // Game loop
   useEffect(() => {
     // Clear any existing interval when game over, paused, or not started
@@ -310,11 +360,14 @@ export const useTetrisGame = () => {
     }
 
     // Calculate speed based on score
-    const speed = Math.max(200, 500 - Math.floor(state.score / 800) * 20);
+    const speed = Math.max(
+      MIN_DROP_SPEED, 
+      INITIAL_DROP_SPEED - Math.floor(state.score / SPEED_INCREASE_THRESHOLD) * SPEED_INCREASE_AMOUNT
+    );
     
     // Set up the drop interval
     dropTimeRef.current = window.setInterval(() => {
-      dispatch({ type: 'TICK' });
+      dispatch({ type: ACTION_TYPES.TICK });
     }, speed);
     
     // Cleanup function
@@ -334,28 +387,28 @@ export const useTetrisGame = () => {
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault();
-          dispatch({ type: 'MOVE_LEFT' });
+          moveLeft();
           break;
         case 'ArrowRight':
           e.preventDefault();
-          dispatch({ type: 'MOVE_RIGHT' });
+          moveRight();
           break;
         case 'ArrowDown':
           e.preventDefault();
-          dispatch({ type: 'MOVE_DOWN' });
+          moveDown();
           break;
         case 'ArrowUp':
           e.preventDefault();
-          dispatch({ type: 'HARD_DROP' });
+          hardDrop();
           break;
         case ' ':
           e.preventDefault();
-          dispatch({ type: 'ROTATE' });
+          rotate();
           break;
         case 'p':
         case 'P':
           e.preventDefault();
-          dispatch({ type: 'PAUSE' });
+          togglePause();
           break;
         default:
           break;
@@ -364,46 +417,7 @@ export const useTetrisGame = () => {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.gameOver, state.gameStarted]);
-  
-  // Public API
-  const startGame = useCallback(() => {
-    dispatch({ type: 'START_GAME' });
-  }, []);
-  
-  // Reset game
-  const resetGame = useCallback(() => {
-    // Clear any existing interval before resetting
-    if (dropTimeRef.current !== null) {
-      window.clearInterval(dropTimeRef.current);
-      dropTimeRef.current = null;
-    }
-    dispatch({ type: 'RESET_GAME' });
-  }, []);
-  
-  const moveLeft = useCallback(() => {
-    dispatch({ type: 'MOVE_LEFT' });
-  }, []);
-  
-  const moveRight = useCallback(() => {
-    dispatch({ type: 'MOVE_RIGHT' });
-  }, []);
-  
-  const moveDown = useCallback(() => {
-    dispatch({ type: 'MOVE_DOWN' });
-  }, []);
-  
-  const hardDrop = useCallback(() => {
-    dispatch({ type: 'HARD_DROP' });
-  }, []);
-  
-  const rotate = useCallback(() => {
-    dispatch({ type: 'ROTATE' });
-  }, []);
-  
-  const togglePause = useCallback(() => {
-    dispatch({ type: 'PAUSE' });
-  }, []);
+  }, [state.gameOver, state.gameStarted, moveLeft, moveRight, moveDown, hardDrop, rotate, togglePause]);
   
   return {
     // State
