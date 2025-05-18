@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useContext } from 'react';
-import TetrisBoard from '@/components/TetrisBoard';
+import TetrisGame from '@/components/tetris/TetrisGame';
 import { TetrisProvider, TetrisContext } from '../components/TetrisContext';
 
 function GameStatus() {
@@ -47,7 +47,7 @@ export default function Home() {
           <div className="w-full max-w-[600px] text-center min-h-[2rem] mb-4">
             <GameStatus />
           </div>
-          <TetrisBoard />
+          <TetrisGame />
         </div>
       </main>
     </TetrisProvider>
