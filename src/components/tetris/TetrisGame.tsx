@@ -22,7 +22,6 @@ const TetrisGame: React.FC = () => {
     resetGame,
     moveLeft,
     moveRight,
-    moveDown,
     hardDrop,
     rotate,
     togglePause,
@@ -76,7 +75,6 @@ const TetrisGame: React.FC = () => {
             onPause={togglePause}
             onStart={startGame}
             onReset={resetGame}
-            gameOver={gameOver}
             isPaused={isPaused}
             gameStarted={gameStarted}
           />

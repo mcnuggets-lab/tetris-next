@@ -8,7 +8,6 @@ export interface GameControlsProps {
   onPause: () => void;
   onStart: () => void;
   onReset: () => void;
-  gameOver: boolean;
   isPaused: boolean;
   gameStarted: boolean;
 }
@@ -21,7 +20,6 @@ const GameControls: React.FC<GameControlsProps> = ({
   onPause,
   onStart,
   onReset,
-  gameOver,
   isPaused,
   gameStarted,
 }) => {

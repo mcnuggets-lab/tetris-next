@@ -1,4 +1,4 @@
-import { Grid, Position, Tetromino, Cell } from '../types';
+import { Grid, Position, Tetromino } from '../types';
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;

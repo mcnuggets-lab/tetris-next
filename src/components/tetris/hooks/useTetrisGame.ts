@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useReducer, useContext } from 'react';
-import { GameState, GameAction, Position } from '../types';
+import { useEffect, useReducer, useCallback, useRef } from 'react';
+import { GameState, GameAction } from '../types';
 import { getRandomTetromino, rotateMatrix } from '../utils/tetrominoes';
 import { 
   createEmptyGrid, 
@@ -279,7 +279,7 @@ export const useTetrisGame = () => {
     isPaused: contextIsPaused
   });
   
-  const [dropTime, setDropTime] = useState<number | null>(null);
+  const dropTimeRef = useRef<number | null>(null);
   
   // Sync local state with context
   useEffect(() => {
@@ -299,11 +299,13 @@ export const useTetrisGame = () => {
     // Clear any existing interval when game over, paused, or not started
     const shouldPause = contextGameOver || contextIsPaused || !state.gameStarted;
     
+    // Clear any existing interval
+    if (dropTimeRef.current !== null) {
+      window.clearInterval(dropTimeRef.current);
+      dropTimeRef.current = null;
+    }
+
     if (shouldPause) {
-      if (dropTime !== null) {
-        window.clearInterval(dropTime);
-        setDropTime(null);
-      }
       return;
     }
 
@@ -311,15 +313,16 @@ export const useTetrisGame = () => {
     const speed = Math.max(200, 500 - Math.floor(state.score / 800) * 20);
     
     // Set up the drop interval
-    const id = window.setInterval(() => {
+    dropTimeRef.current = window.setInterval(() => {
       dispatch({ type: 'TICK' });
     }, speed);
     
-    setDropTime(id);
-    
     // Cleanup function
     return () => {
-      window.clearInterval(id);
+      if (dropTimeRef.current !== null) {
+        window.clearInterval(dropTimeRef.current);
+        dropTimeRef.current = null;
+      }
     };
   }, [contextGameOver, contextIsPaused, state.gameStarted, state.score]);
   
@@ -371,12 +374,12 @@ export const useTetrisGame = () => {
   // Reset game
   const resetGame = useCallback(() => {
     // Clear any existing interval before resetting
-    if (dropTime !== null) {
-      window.clearInterval(dropTime);
-      setDropTime(null);
+    if (dropTimeRef.current !== null) {
+      window.clearInterval(dropTimeRef.current);
+      dropTimeRef.current = null;
     }
     dispatch({ type: 'RESET_GAME' });
-  }, [dropTime]);
+  }, []);
   
   const moveLeft = useCallback(() => {
     dispatch({ type: 'MOVE_LEFT' });
